@@ -1,14 +1,25 @@
 import random, sys, time
 
+#calcurate_hash2 文字の順序を考慮するハッシュ関数を作る
+
 #ハッシュ関数（not good）
-def calculate_hash(key):
+def calculate_hash1(key):
     assert type(key) == str
     hash = 0
     for i in key:
         hash += ord(i)
     return hash
 
+#改良版ハッシュ関数
+def calculate_hash2(key):
+    assert type(key) == str
+    hash = 5381 #経験則
+    for char in key:
+        hash = ((hash << 5) + hash) + ord(char) #入力文字に対して計算
+    return hash & 0xFFFFFFFF #64bit->32bit 32bitのハッシュ値が好ましい
 
+
+#大枠→細かい説明
 class Item:
     def __init__(self, key, value, next):
         assert type(key) == str # key is str?
@@ -23,6 +34,7 @@ class HashTable: #HashTableの定義，(key, value)を格納
         self.bucket_size = 97 #素数
         self.buckets = [None] * self.bucket_size
         self.item_count = 0 #ハッシュに入っているアイテム数をカウント
+        self.temp = 0
 
     def is_prime(self, n): #素数を得る
         if n <= 1:
@@ -37,6 +49,8 @@ class HashTable: #HashTableの定義，(key, value)を格納
                 return False
             i += 6
         return True
+    
+    #偶数を避ける
 
     def next_prime(self, n):
         while not self.is_prime(n):
@@ -44,19 +58,23 @@ class HashTable: #HashTableの定義，(key, value)を格納
         return n
     
     def rehash(self, new_bucket_size):
-        new_bucket_size = max(self.next_prime(new_bucket_size), 100) #bucketサイズが100未満にならないよう制約
+        #new_bucket_size = max(self.next_prime(new_bucket_size), 100) #bucketサイズが100未満にならないよう制約
         new_buckets = [None] * new_bucket_size
         old_buckets =  self.buckets
         self.buckets = new_buckets
         self.bucket_size = new_bucket_size
-        self.item_count = 0
+        #self.item_count = 0
+
+        #item_count変えなくて良い
+        #追加する部分は書いてあるからput
+        #new_primeでは倍して＋１
 
         for item in old_buckets:
-            while item:
+            while item: #item_を(self.put)
                 next_item = item.next
                 item.next = None #リストから取り外す
-                bucket_index = self.calculate_hash(item.key) % self.bucket_size
-                if new_bucket_size[bucket_index] is None:
+                bucket_index = calculate_hash2(item.key) % self.bucket_size
+                if new_buckets[bucket_index] is None:
                     new_buckets[bucket_index] = item
                 else:
                     current_item = new_buckets[bucket_index]
@@ -64,26 +82,28 @@ class HashTable: #HashTableの定義，(key, value)を格納
                         current_item = current_item.next
                     current_item.next = item
                 
-                self.item_count += 1
+                #self.item_count += 1
                 item = next_item
-        self.check_size()
 
     # Note: Don't change this function.
     def check_size(self):
+        
+        self.temp += 1
+
         if self.bucket_size < 100:
-            if self.item_count >= self.bucket_size * 0.3:
+            if self.item_count >= self.bucket_size * 0.7:
                 self.rehash(self.bucket_size * 2)
         else:
             if self.item_count >= self.bucket_size * 0.7:
                 self.rehash(self.bucket_size * 2)
             elif self.item_count <= self.bucket_size * 0.3:
                 self.rehash(self.bucket_size // 2)
-
+    
         
     def put(self, key, value):
         assert type(key) == str
         self.check_size() #Don't remove this code.　再ハッシュが必要か判断し再サイズする
-        bucket_index = calculate_hash(key) % self.bucket_size
+        bucket_index = calculate_hash2(key) % self.bucket_size
         item = self.buckets[bucket_index] #itemは[]番目の要素だよ
         while item: #ハッシュテーブルから繋がるリスト内を検索（見つかるまでrepeat）
             if item.key == key:
@@ -101,7 +121,7 @@ class HashTable: #HashTableの定義，(key, value)を格納
     def get(self, key):
         assert type(key) == str
         self.check_size() # Note: Don't remove this code.
-        bucket_index = calculate_hash(key) % self.bucket_size
+        bucket_index = calculate_hash2(key) % self.bucket_size
         item = self.buckets[bucket_index]
         while item:
             if item.key == key:
@@ -114,7 +134,7 @@ class HashTable: #HashTableの定義，(key, value)を格納
         assert type(key) == str
         self.check_size()
 
-        bucket_index = calculate_hash(key) % self.bucket_size
+        bucket_index = calculate_hash2(key) % self.bucket_size
         current_item = self.buckets[bucket_index] #bucket内の最初のアイテム
         previous_item = None #前のアイテムを保持する変数を初期化
 
