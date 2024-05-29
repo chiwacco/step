@@ -1,5 +1,5 @@
 #! /usr/bin/python3
-#　*と/に対応するように改良
+#　absやintに対応できるように改良
 
 def read_number(line, index):
     number = 0
@@ -89,39 +89,24 @@ def evaluate(tokens):
         while index < len(tokens):
             if tokens[index]['type'] == 'FUNCTION':
                 func_name = tokens[index]['name']
-                print(tokens)
-                if tokens[index + 1]['type'] == 'OPEN_PAREN':
-                    paren_count = 1
-                    sub_tokens = []
-                    index += 2
-                    while index < len(tokens) and paren_count > 0: #()内
-                        if tokens[index]['type'] == 'OPEN_PAREN':
-                            paren_count += 1
-                        elif tokens[index]['type'] == 'CLOSE_PAREN':
-                            paren_count -= 1
-                        if paren_count > 0:
-                            sub_tokens.append(tokens[index])
-                        index += 1
-
-                    print(tokens)
-                    sub_value = evaluate_tokens(sub_tokens) #（）内の答え
-                
                 
                 if func_name == 'abs':
-                    result = abs(sub_value)
+                    result = abs(tokens[index+1]['number'])
                 elif func_name == 'int':
-                    result = int(sub_value)
+                    result = int(tokens[index+1]['number'])
                 elif func_name == 'round':
-                    result = round(sub_value)
+                    result = round(tokens[index+1]['number'])
                 else:
-                    print('Invalid function name')
-                    exit(1)
+                    index += 1
+                    continue
+                tokens[index] = {'type': 'NUMBER', 'number': result}
+                del tokens[index+1]
+                    
                 
-                tokens = tokens[:index - len(sub_tokens) - 3] + [{'type': 'NUMBER', 'number': result}] + tokens[index:]
-                index = 0
             index += 1
         return tokens
-
+    
+    
         
 
     #（）内計算
@@ -129,11 +114,11 @@ def evaluate(tokens):
         index = 0
         while index < len(tokens):
             if tokens[index]['type'] == 'OPEN_PAREN':
-                sub_tokens = [] #()内のtoken
+                sub_tokens = []
                 paren_count = 1
                 index += 1
-
-                while index < len(tokens) and paren_count > 0: #()内
+                start_index = index
+                while index < len(tokens) and paren_count > 0:
                     if tokens[index]['type'] == 'OPEN_PAREN':
                         paren_count += 1
                     elif tokens[index]['type'] == 'CLOSE_PAREN':
@@ -141,12 +126,10 @@ def evaluate(tokens):
                     if paren_count > 0:
                         sub_tokens.append(tokens[index])
                     index += 1
-
-                sub_value = evaluate_tokens(sub_tokens) #（）内の答え
-                
-                
-                tokens = tokens[:index - len(sub_tokens) - 1] + [{'type': 'NUMBER', 'number': sub_value}] + tokens[index:] #indexの前　(　)　indexの後ろ
-                index = 0
+                sub_tokens = evaluate_parentheses(sub_tokens)
+                sub_value = evaluate_tokens(sub_tokens)
+                tokens = tokens[:start_index-1] + [{'type': 'NUMBER', 'number': sub_value}] + tokens[index:]
+                index = start_index
             index += 1
         return tokens
     
@@ -184,9 +167,9 @@ def evaluate(tokens):
             index += 1
         return answer
     
-    tokens = evaluate_parentheses(tokens)
-    tokens = evaluate_function(tokens)
-    return evaluate_tokens(tokens)
+    tokens = evaluate_parentheses(tokens) #（）、関数名ある状態でOK。（）外す
+    tokens = evaluate_function(tokens)#関数名外される
+    return evaluate_tokens(tokens) #数字と符号のみ
 
 
 def test(line):
@@ -202,18 +185,18 @@ def test(line):
 # Add more tests to this function :)
 def run_test():
     print("==== Test started! ====")
-    #test("1+2")
-    #test("1.0+2.1-3")
-    #test("4*2")
-    #test("3+4*2-1/5")
-    #test("3*4+2/2-0.1")
-    #test("2+(3+4)*2")
-    #test("2*(1+2)*2")
-    #test("3*(4+3)-1/5")
-    test("abs(2)")
-    #test("int(1.55)")
-    #test("round(1.55)")
-    #test("12 + abs(int(round(-1.55) + abs(int(-2.3 + 4))))")
+    test("1+2")
+    test("1.0+2.1-3")
+    test("4*2")
+    test("3+4*2-1/5")
+    test("3*4+2/2-0.1")
+    test("2+(3+4)*2")
+    test("2*(1+2)*2")
+    test("3*(4+3)-1/5")
+    test("abs(2+2)")
+    test("int(1.55)")
+    test("round(1.55)")
+    #test("12 + abs(2+2)")
     print("==== Test finished! ====\n")
 
 run_test()

@@ -72,68 +72,67 @@ def tokenize(line):
     return tokens
 
 
-def evaluate(tokens):
+#def evaluate(tokens):
 
-    #（）内計算
-    def evaluate_parentheses(tokens):
-        index = 0
-        while index < len(tokens):
-            if tokens[index]['type'] == 'OPEN_PAREN':
-                sub_tokens = [] #()内のtoken
-                paren_count = 1
-                index += 1
-
-                while index < len(tokens) and paren_count > 0: #()内
-                    if tokens[index]['type'] == 'OPEN_PAREN':
-                        paren_count += 1
-                    elif tokens[index]['type'] == 'CLOSE_PAREN':
-                        paren_count -= 1
-                    if paren_count > 0:
-                        sub_tokens.append(tokens[index])
-                    index += 1
-
-                sub_value = evaluate_tokens(sub_tokens) #（）内の答え
-                
-                
-                tokens = tokens[:index - len(sub_tokens) - 1] + [{'type': 'NUMBER', 'number': sub_value}] + tokens[index:] #indexの前　(　)　indexの後ろ
-                index = 0
+#（）内計算
+def evaluate_parentheses(tokens):
+    index = 0
+    while index < len(tokens):
+        if tokens[index]['type'] == 'OPEN_PAREN':
+            sub_tokens = []
+            paren_count = 1
             index += 1
-        return tokens
+            start_index = index
+            while index < len(tokens) and paren_count > 0:
+                if tokens[index]['type'] == 'OPEN_PAREN':
+                    paren_count += 1
+                elif tokens[index]['type'] == 'CLOSE_PAREN':
+                    paren_count -= 1
+                if paren_count > 0:
+                    sub_tokens.append(tokens[index])
+                index += 1
+            sub_tokens = evaluate_parentheses(sub_tokens)
+            sub_value = evaluate_tokens(sub_tokens)
+            tokens = tokens[:start_index-1] + [{'type': 'NUMBER', 'number': sub_value}] + tokens[index:]
+            index = start_index
+        index += 1
+    return tokens
     
     
     
-    def evaluate_tokens(tokens):
-        #step1：*と/を処理
-        index = 1
+def evaluate_tokens(tokens):
+    #step1：*と/を処理
+    index = 1
 
-        while index < len(tokens):
-            if tokens[index]['type'] == 'ASTERISK':
-                tokens[index - 1]['number'] *= tokens[index + 1]['number']
-                del tokens[index:index + 2] #計算済みを削除
-            elif tokens[index]['type'] == 'SLASH':
-                tokens[index - 1]['number'] /= tokens[index + 1]['number']
-                del tokens[index:index + 2] #計算済みを削除
+    while index < len(tokens):
+        if tokens[index]['type'] == 'ASTERISK':
+            tokens[index - 1]['number'] *= tokens[index + 1]['number']
+            del tokens[index:index + 2] #計算済みを削除
+        elif tokens[index]['type'] == 'SLASH':
+            tokens[index - 1]['number'] /= tokens[index + 1]['number']
+            del tokens[index:index + 2] #計算済みを削除
+        else:
+            index += 1
+
+    # step2：*/がない式をもう一度頭から計算
+    index = 0
+    answer = 0
+
+    tokens.insert(0, {'type' : 'PLUS'}) #先頭にdummyの+
+
+    while index < len(tokens):
+        if tokens[index]['type'] == 'NUMBER':
+            if tokens[index - 1]['type'] == 'PLUS':
+                answer += tokens[index]['number']
+            elif tokens[index - 1]['type'] == 'MINUS':
+                answer -= tokens[index]['number']
             else:
-                index += 1
-
-        # step2：*/がない式をもう一度頭から計算
-        index = 0
-        answer = 0
-
-        tokens.insert(0, {'type' : 'PLUS'}) #先頭にdummyの+
-
-        while index < len(tokens):
-            if tokens[index]['type'] == 'NUMBER':
-                if tokens[index - 1]['type'] == 'PLUS':
-                    answer += tokens[index]['number']
-                elif tokens[index - 1]['type'] == 'MINUS':
-                    answer -= tokens[index]['number']
-                else:
-                    print('Invalid syntax1')
-                    exit(1)
-            index += 1
-        return answer
+                print('Invalid syntax1')
+                exit(1)
+        index += 1
+    return answer
     
+def evaluate(tokens):
     tokens = evaluate_parentheses(tokens)
     return evaluate_tokens(tokens)
 
@@ -159,6 +158,9 @@ def run_test():
     test("2+(3+4)*2")
     test("2*(1+2)*2")
     test("3*(4+3)-1/5")
+    test("(2*(2+2)*4)")
+    test("120/(6*(5-3))")
+    test("2.0*(4+2*(6/(4-2.5)))")
     print("==== Test finished! ====\n")
 
 run_test()
