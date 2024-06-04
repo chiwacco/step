@@ -118,71 +118,6 @@ class Wikipedia:
     # Calculate the page ranks and print the most popular pages.
     def find_most_popular_pages(self):
         num_pages = len(self.titles)
-        # {id:pagerank} dictionary
-        ranks = {id: 1 / num_pages for id in self.titles}
-        damping_factor = 0.85
-        num_iteration = 100
-        min_delta = 1e-6 #収束しきい値
-
-        for interation in range(num_iteration):
-            new_ranks = {}
-            for page in self.titles:
-                rank_sum = 0
-                for linking_pages in self.titles:
-                    # Distribute PageRank from linking_pages
-                    if page in self.links[linking_pages]:
-                        rank_sum += ranks[linking_pages] / len(self.links[linking_pages])
-                    elif len(self.links[linking_pages]) == 0:
-                        rank_sum += ranks[linking_pages] / num_pages
-
-                # Calcurate: new PageRank
-                new_ranks[page] = (1 - damping_factor) / num_pages + damping_factor * rank_sum
-
-            # Calcurate: total change in PageRank value
-            delta = sum(abs(new_ranks[page] - ranks[page]) for page in self.titles)
-            ranks = new_ranks
-
-            if delta < min_delta:
-                #print(f"Covered after {interation + 1} itarations.")
-                break
-            
-        # Print: top 10 pages
-        top_pages = sorted(ranks.items(), key=lambda item:item[1], reverse=True)[:10]
-        print("Top 10 popular pages:")
-        for page_id, rank in top_pages:
-            print(f"{self.titles[page_id]}: {rank:.6f}")
-
-        # Check: Total PageRank=1
-        total_rank = sum(ranks.values())
-        print(f"Total PageRank: {total_rank:.6f}")
-
-        pass
-
-    # HW3
-    # Do something more interesting!!
-    def find_something_more_interesting(self):
-        #------------------------#
-        # Write your code here!  #
-        #------------------------#
-        pass
-
-
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("usage: %s pages_file links_file" % sys.argv[0])
-        exit(1)
-
-    wikipedia = Wikipedia(sys.argv[1], sys.argv[2])
-    #wikipedia.find_longest_titles()
-    #wikipedia.find_most_linked_pages()
-    #wikipedia.find_shortest_path("A", "D")
-    wikipedia.find_most_popular_pages()
-
-
-    # HW2
-    # Calculate the page ranks and print the most popular pages.
-    def find_most_popular_pages(self):
-        num_pages = len(self.titles)
         ranks = {id: 1 /num_pages for id in self.titles}
         damping_factor = 0.85
         num_iteration = 100
@@ -221,7 +156,7 @@ if __name__ == "__main__":
 
         pass
 
-    # HW3
+    # HW3 (まだできてない。途中)
     # Do something more interesting!!
     def find_longest_path(self):
         max_distance = 0
@@ -260,3 +195,16 @@ if __name__ == "__main__":
                     queue.append((child, path + [child]))
 
         return []
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("usage: %s pages_file links_file" % sys.argv[0])
+        exit(1)
+
+    wikipedia = Wikipedia(sys.argv[1], sys.argv[2])
+    #wikipedia.find_longest_titles()
+    #wikipedia.find_most_linked_pages()
+    #wikipedia.find_shortest_path("A", "D")
+    #wikipedia.find_most_popular_pages()
+    wikipedia.find_longest_path()

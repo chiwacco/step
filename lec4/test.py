@@ -118,46 +118,39 @@ class Wikipedia:
     # Calculate the page ranks and print the most popular pages.
     def find_most_popular_pages(self):
         num_pages = len(self.titles)
-        # {id:pagerank} dictionary
         ranks = {id: 1 / num_pages for id in self.titles}
         damping_factor = 0.85
         num_iteration = 100
-        min_delta = 1e-6 #収束しきい値
+        min_delta = 1e-6
 
-        for interation in range(num_iteration):
-            new_ranks = {}
-            for page in self.titles:
-                rank_sum = 0
-                for linking_pages in self.titles:
-                    # Distribute PageRank from linking_pages
-                    if page in self.links[linking_pages]:
-                        rank_sum += ranks[linking_pages] / len(self.links[linking_pages])
-                    elif len(self.links[linking_pages]) == 0:
-                        rank_sum += ranks[linking_pages] / num_pages
+        for iteration in range(num_iteration):
+            new_ranks = {id: (1 - damping_factor) / num_pages for id in self.titles}
+            rank_sum = 0
 
-                # Calcurate: new PageRank
-                new_ranks[page] = (1 - damping_factor) / num_pages + damping_factor * rank_sum
+            for page, links in self.links.items():
+                if links:
+                    contribution = damping_factor * ranks[page] / len(links)
+                    for linked_page in links:
+                        new_ranks[linked_page] += contribution
+                else:
+                    # Contribute to the rank sum if there are no outgoing links
+                    rank_sum += damping_factor * ranks[page] / num_pages
 
-            # Calcurate: total change in PageRank value
+            if rank_sum > 0:
+                for page in new_ranks:
+                    new_ranks[page] += rank_sum
+
+            # Calculate total change in PageRank value
             delta = sum(abs(new_ranks[page] - ranks[page]) for page in self.titles)
             ranks = new_ranks
 
             if delta < min_delta:
-                #print(f"Covered after {interation + 1} itarations.")
+                # print(f"Converged after {iteration + 1} iterations.")
                 break
+    
+
             
-        # Print: top 10 pages
-        top_pages = sorted(ranks.items(), key=lambda item:item[1], reverse=True)[:10]
-        print("Top 10 popular pages:")
-        for page_id, rank in top_pages:
-            print(f"{self.titles[page_id]}: {rank:.6f}")
-
-        # Check: Total PageRank=1
-        total_rank = sum(ranks.values())
-        print(f"Total PageRank: {total_rank:.6f}")
-
-        pass
-
+        
     # HW3
     # Do something more interesting!!
     def find_something_more_interesting(self):
