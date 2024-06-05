@@ -156,7 +156,8 @@ class Wikipedia:
 
         pass
 
-    # HW3 (まだできてない。途中)
+    # HW3
+    # Find the longest path in a DAG.
     # Do something more interesting!!
     def find_longest_path(self):
         def topological_sort():
