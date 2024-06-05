@@ -159,42 +159,56 @@ class Wikipedia:
     # HW3 (まだできてない。途中)
     # Do something more interesting!!
     def find_longest_path(self):
-        max_distance = 0
-        start_node = None
-        end_node = None
+        def topological_sort():
+            visited = set()
+            stack = []
+            def dfs(node):
+                visited.add(node)
+                for neighbor in self.links[node]:
+                    if neighbor not in visited:
+                        dfs(neighbor)
+                stack.append(node)
+            
+            for node in self.titles.keys():
+                if node not in visited:
+                    dfs(node)
+            return stack[::-1]
+        
+        def find_longest_path_from(start):
+            distances = {node: float('-inf') for node in self.titles}
+            distances[start] = 0
+            path_from = {node: [] for node in self.titles}
 
-        for node in self.titles:
-            farthest_node, distance = self.bfs_longest_path_from(node)
-            if distance > max_distance:
-                max_distance = distance
-                start_node = node
-                end_node = farthest_node
+            for node in topological_order:
+                for neighbor in self.links[node]:
+                    if distances[node] + 1 > distances[neighbor]:
+                        distances[neighbor] = distances[node] + 1
+                        path_from[neighbor] = path_from[node] + [neighbor]
+            
+            max_distance = max(distances.values())
+            end_node = [node for node, distance in distances.items() if distance == max_distance][0]
+            return (max_distance, [start] + path_from[end_node])
 
-        # Find the path between start_node and end_node
-        path = self.find_path_between_nodes(start_node, end_node)
+        
+        topological_order = topological_sort()
+        longest_path_length = 0
+        longest_path = []
 
-        print(f"The longest path is from {self.titles[start_node]} to {self.titles[end_node]} with a distance of {max_distance}")
-        print("Path:", " -> ".join([self.titles[pid] for pid in path]))
+        for node in self.titles.keys():
+            path_length, path = find_longest_path_from(node)
+            if path_length > longest_path_length:
+                longest_path_length = path_length
+                longest_path = path
+            
+        if longest_path:
+            print("The longest path is:")
+            print(" -> ".join(self.titles[node] for node in longest_path))
+            print(f"Length: {longest_path_length}")
+        else:
+            print("No path found")
 
-    def find_path_between_nodes(self, start_id, end_id):
-        # Use BFS to find the path between start_id and end_id
-        queue = collections.deque([(start_id, [start_id])])
-        visited = set()
-
-        while queue:
-            current_id, path = queue.popleft()
-            if current_id in visited:
-                continue
-            visited.add(current_id)
-
-            if current_id == end_id:
-                return path
-
-            for child in self.links[current_id]:
-                if child not in visited:
-                    queue.append((child, path + [child]))
-
-        return []
+        pass
+        
 
 
 if __name__ == "__main__":

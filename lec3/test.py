@@ -1,6 +1,5 @@
 import sys
 import collections
-import queue
 
 class Wikipedia:
 
@@ -8,36 +7,31 @@ class Wikipedia:
     def __init__(self, pages_file, links_file):
 
         # A mapping from a page ID (integer) to the page title.
-        # For example, self.titles[1234] returns the title of the page whose
-        # ID is 1234.
         self.titles = {}
 
         # A set of page links.
-        # For example, self.links[1234] returns an array of page IDs linked
-        # from the page whose ID is 1234.
         self.links = {}
 
-        # Read the pages file into self.titles.　分野とそのID
+        # Read the pages file into self.titles.
         with open(pages_file) as file:
             for line in file:
-                (id, title) = line.rstrip().split(" ")
+                id, title = line.rstrip().split(" ")
                 id = int(id)
-                assert not id in self.titles, id
+                assert id not in self.titles, id
                 self.titles[id] = title
                 self.links[id] = []
         print("Finished reading %s" % pages_file)
 
-        # Read the links file into self.links.　分野のIDと記事のID
+        # Read the links file into self.links.
         with open(links_file) as file:
             for line in file:
-                (src, dst) = line.rstrip().split(" ")
-                (src, dst) = (int(src), int(dst))
+                src, dst = line.rstrip().split(" ")
+                src, dst = int(src), int(dst)
                 assert src in self.titles, src
                 assert dst in self.titles, dst
                 self.links[src].append(dst)
         print("Finished reading %s" % links_file)
         print()
-
 
     # Find the longest titles. This is not related to a graph algorithm at all
     # though :)
@@ -47,26 +41,23 @@ class Wikipedia:
         count = 0
         index = 0
         while count < 15 and index < len(titles):
-            if titles[index].find("_") == -1:
+            if "_" not in titles[index]:
                 print(titles[index])
                 count += 1
             index += 1
         print()
 
-
     # Find the most linked pages.
     def find_most_linked_pages(self):
-        link_count = {}
-        for id in self.titles.keys():
-            link_count[id] = 0
+        link_count = {id: 0 for id in self.titles}
 
-        for id in self.titles.keys():
+        for id in self.titles:
             for dst in self.links[id]:
                 link_count[dst] += 1
 
         print("The most linked pages are:")
         link_count_max = max(link_count.values())
-        for dst in link_count.keys():
+        for dst in link_count:
             if link_count[dst] == link_count_max:
                 print(self.titles[dst], link_count_max)
         print()
@@ -76,7 +67,6 @@ class Wikipedia:
     # |start|: The title of the start page.
     # |goal|: The title of the goal page.
     def find_shortest_path(self, start, goal):
-        
         start_id = None
         goal_id = None
 
@@ -86,11 +76,11 @@ class Wikipedia:
             if title == goal:
                 goal_id = id
 
-        # If either start or goal is not found, retun None
+        # If either start or goal is not found, return None
         if start_id is None or goal_id is None:
             print("start or goal page is Not Found")
             return
-        
+
         # Use BFS to find shortest path
         queue = collections.deque([(start_id, [start_id])])
         visited = set()
@@ -104,9 +94,9 @@ class Wikipedia:
             if current_id == goal_id:
                 # Convert path of IDs to path of titles
                 path_titles = [self.titles[pid] for pid in path]
-                print("Shortest path:" , "-> ".join(path_titles))
+                print("Shortest path:", " -> ".join(path_titles))
                 return
-            
+
             for child in self.links[current_id]:
                 if child not in visited:
                     queue.append((child, path + [child]))
@@ -118,72 +108,7 @@ class Wikipedia:
     # Calculate the page ranks and print the most popular pages.
     def find_most_popular_pages(self):
         num_pages = len(self.titles)
-        # {id:pagerank} dictionary
         ranks = {id: 1 / num_pages for id in self.titles}
-        damping_factor = 0.85
-        num_iteration = 100
-        min_delta = 1e-6 #収束しきい値
-
-        for interation in range(num_iteration):
-            new_ranks = {}
-            for page in self.titles:
-                rank_sum = 0
-                for linking_pages in self.titles:
-                    # Distribute PageRank from linking_pages
-                    if page in self.links[linking_pages]:
-                        rank_sum += ranks[linking_pages] / len(self.links[linking_pages])
-                    elif len(self.links[linking_pages]) == 0:
-                        rank_sum += ranks[linking_pages] / num_pages
-
-                # Calcurate: new PageRank
-                new_ranks[page] = (1 - damping_factor) / num_pages + damping_factor * rank_sum
-
-            # Calcurate: total change in PageRank value
-            delta = sum(abs(new_ranks[page] - ranks[page]) for page in self.titles)
-            ranks = new_ranks
-
-            if delta < min_delta:
-                #print(f"Covered after {interation + 1} itarations.")
-                break
-            
-        # Print: top 10 pages
-        top_pages = sorted(ranks.items(), key=lambda item:item[1], reverse=True)[:10]
-        print("Top 10 popular pages:")
-        for page_id, rank in top_pages:
-            print(f"{self.titles[page_id]}: {rank:.6f}")
-
-        # Check: Total PageRank=1
-        total_rank = sum(ranks.values())
-        print(f"Total PageRank: {total_rank:.6f}")
-
-        pass
-
-    # HW3
-    # Do something more interesting!!
-    def find_something_more_interesting(self):
-        #------------------------#
-        # Write your code here!  #
-        #------------------------#
-        pass
-
-
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("usage: %s pages_file links_file" % sys.argv[0])
-        exit(1)
-
-    wikipedia = Wikipedia(sys.argv[1], sys.argv[2])
-    #wikipedia.find_longest_titles()
-    #wikipedia.find_most_linked_pages()
-    #wikipedia.find_shortest_path("A", "D")
-    wikipedia.find_most_popular_pages()
-
-
-    # HW2
-    # Calculate the page ranks and print the most popular pages.
-    def find_most_popular_pages(self):
-        num_pages = len(self.titles)
-        ranks = {id: 1 /num_pages for id in self.titles}
         damping_factor = 0.85
         num_iteration = 100
         min_delta = 1e-6  # 収束しきい値
@@ -210,7 +135,7 @@ if __name__ == "__main__":
                 break
                 
         # Print: top 10 pages
-        top_pages = sorted(ranks.items(), key=lambda item:item[1], reverse=True)[:10]
+        top_pages = sorted(ranks.items(), key=lambda item: item[1], reverse=True)[:10]
         print("Top 10 popular pages:")
         for page_id, rank in top_pages:
             print(f"{self.titles[page_id]}: {rank:.6f}")
@@ -222,41 +147,66 @@ if __name__ == "__main__":
         pass
 
     # HW3
-    # Do something more interesting!!
+    # Find the longest path in a DAG.
     def find_longest_path(self):
-        max_distance = 0
-        start_node = None
-        end_node = None
+        def topological_sort():
+            visited = set()
+            stack = []
+            def dfs(node):
+                visited.add(node)
+                for neighbor in self.links[node]:
+                    if neighbor not in visited:
+                        dfs(neighbor)
+                stack.append(node)
+            
+            for node in self.titles.keys():
+                if node not in visited:
+                    dfs(node)
+            return stack[::-1]
 
-        for node in self.titles:
-            farthest_node, distance = self.bfs_longest_path_from(node)
-            if distance > max_distance:
-                max_distance = distance
-                start_node = node
-                end_node = farthest_node
+        def find_longest_path_from(start):
+            distances = {node: float('-inf') for node in self.titles}
+            distances[start] = 0
+            path_from = {node: [] for node in self.titles}
+            
+            for node in topological_order:
+                for neighbor in self.links[node]:
+                    if distances[node] + 1 > distances[neighbor]:
+                        distances[neighbor] = distances[node] + 1
+                        path_from[neighbor] = path_from[node] + [neighbor]
+            
+            max_distance = max(distances.values())
+            end_node = [node for node, distance in distances.items() if distance == max_distance][0]
+            return (max_distance, [start] + path_from[end_node])
 
-        # Find the path between start_node and end_node
-        path = self.find_path_between_nodes(start_node, end_node)
+        topological_order = topological_sort()
+        longest_path_length = 0
+        longest_path = []
 
-        print(f"The longest path is from {self.titles[start_node]} to {self.titles[end_node]} with a distance of {max_distance}")
-        print("Path:", " -> ".join([self.titles[pid] for pid in path]))
+        for node in self.titles.keys():
+            path_length, path = find_longest_path_from(node)
+            if path_length > longest_path_length:
+                longest_path_length = path_length
+                longest_path = path
 
-    def find_path_between_nodes(self, start_id, end_id):
-        # Use BFS to find the path between start_id and end_id
-        queue = collections.deque([(start_id, [start_id])])
-        visited = set()
+        if longest_path:
+            print("The longest path is:")
+            print(" -> ".join(self.titles[node] for node in longest_path))
+            print(f"Length: {longest_path_length}")
+        else:
+            print("No path found")
 
-        while queue:
-            current_id, path = queue.popleft()
-            if current_id in visited:
-                continue
-            visited.add(current_id)
+        pass
 
-            if current_id == end_id:
-                return path
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("usage: %s pages_file links_file" % sys.argv[0])
+        exit(1)
 
-            for child in self.links[current_id]:
-                if child not in visited:
-                    queue.append((child, path + [child]))
-
-        return []
+    wikipedia = Wikipedia(sys.argv[1], sys.argv[2])
+    # Uncomment the lines below to test other functionalities
+    # wikipedia.find_longest_titles()
+    # wikipedia.find_most_linked_pages()
+    # wikipedia.find_shortest_path("A", "D")
+    # wikipedia.find_most_popular_pages()
+    wikipedia.find_longest_path()
