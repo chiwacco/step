@@ -1,13 +1,16 @@
+#焼きなまし方：局所解に陥らず広い解空間を探索する能力がある
+
 import csv
 import math
 import random
 import numpy as np
 
-# 距離の計算
+# 距離の計算　city1とcity2のユークリッド距離
 def calculate_distance(city1, city2):
     return math.sqrt((city1[0] - city2[0])**2 + (city1[1] - city2[1])**2)
 
 # 全経路の距離の計算
+# tour:都市のindexList　cities:各都市の座標List
 def total_distance(tour, cities):
     total_dist = 0
     for i in range(len(tour)):
@@ -15,6 +18,7 @@ def total_distance(tour, cities):
     return total_dist
 
 # 焼きなまし法
+# initial_temperatureからcooling_rateで温度を徐々に下げながら最適解を探索
 def simulated_annealing(cities, initial_temperature=1000, cooling_rate=0.99, stopping_temperature=0.1):
     num_cities = len(cities)
     current_solution = list(range(num_cities))
@@ -33,6 +37,7 @@ def simulated_annealing(cities, initial_temperature=1000, cooling_rate=0.99, sto
         neighbor_distance = total_distance(neighbor_solution, cities)
         delta_distance = neighbor_distance - current_distance
 
+        #ランダムに選んだ2つを交換して新しい解neighbor_solutionを生成
         if delta_distance < 0 or random.random() < np.exp(-delta_distance / temperature):
             current_solution = neighbor_solution
             current_distance = neighbor_distance
