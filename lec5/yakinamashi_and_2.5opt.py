@@ -52,27 +52,32 @@ def simulated_annealing(cities, initial_temperature=1000, cooling_rate=0.99, sto
 
     return best_solution
 
-def apply_two_opt(tour, cities):
+def apply_twofive_opt(tour, cities):
     """
-    2-opt法による局所探索。
+    2.5-opt法による局所探索。
     """
     improved = True
     while improved:
         improved = False
-        for i in range(1, len(tour) - 2):
-            for j in range(i + 1, len(tour)):
-                if j - i == 1:
-                    continue  # 隣接する辺は交換しない
-                new_tour = tour[:]
-                new_tour[i:j] = tour[j - 1:i - 1:-1]  # 2-opt操作
-                new_distance = total_distance(new_tour, cities)
-                if new_distance < total_distance(tour, cities):
-                    tour = new_tour
-                    improved = True
+        num_cities = len(tour)
+        for i in range(1, num_cities - 3):
+            for j in range(i + 2, num_cities - 1):
+                for k in range(j + 2, num_cities):
+                    if k - i == 2:
+                        continue  # No need to swap adjacent edges
+                    # Generate new tour by applying 2.5-opt move
+                    new_tour = tour[:i] + tour[j:k] + tour[i:j] + tour[k:]
+                    new_distance = total_distance(new_tour, cities)
+                    if new_distance < total_distance(tour, cities):
+                        tour = new_tour
+                        improved = True
+                        break
+                if improved:
                     break
             if improved:
                 break
     return tour
+
 
 def read_input(filename):
     """
@@ -99,15 +104,15 @@ def write_output(filename, tour):
             writer.writerow([city])
 
 def main():
-    #for i in range(7):
-    input_file = f'input_5.csv'
-    output_file = f'output_5.csv'
+    for i in range(7):
+        input_file = f'input_4.csv'
+        output_file = f'output_2.5opt_4.csv'
 
-    cities = read_input(input_file)
-    initial_tour = simulated_annealing(cities)
-    best_tour = apply_two_opt(initial_tour, cities)
+        cities = read_input(input_file)
+        initial_tour = simulated_annealing(cities)
+        best_tour = apply_twofive_opt(initial_tour, cities)
 
-    write_output(output_file, best_tour)
+        write_output(output_file, best_tour)
 
 if __name__ == "__main__":
     main()

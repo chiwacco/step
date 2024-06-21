@@ -52,27 +52,58 @@ def simulated_annealing(cities, initial_temperature=1000, cooling_rate=0.99, sto
 
     return best_solution
 
-def apply_two_opt(tour, cities):
+def apply_3_opt(tour, cities):
     """
-    2-opt法による局所探索。
+    3-opt法による局所探索。
     """
     improved = True
     while improved:
         improved = False
-        for i in range(1, len(tour) - 2):
-            for j in range(i + 1, len(tour)):
-                if j - i == 1:
-                    continue  # 隣接する辺は交換しない
-                new_tour = tour[:]
-                new_tour[i:j] = tour[j - 1:i - 1:-1]  # 2-opt操作
-                new_distance = total_distance(new_tour, cities)
-                if new_distance < total_distance(tour, cities):
-                    tour = new_tour
-                    improved = True
+        num_cities = len(tour)
+        for i in range(1, num_cities - 4):
+            for j in range(i + 2, num_cities - 2):
+                for k in range(j + 2, num_cities):
+                    # Generate new tour by applying 3-opt move
+                    new_tour = three_opt_swap(tour, i, j, k, cities)
+                    new_distance = total_distance(new_tour, cities)
+                    if new_distance < total_distance(tour, cities):
+                        tour = new_tour
+                        improved = True
+                        break
+                if improved:
                     break
             if improved:
                 break
     return tour
+
+def three_opt_swap(tour, i, j, k, cities):
+    """
+    Perform 3-opt swap on tour.
+    """
+    part1 = tour[:i]
+    part2 = tour[i:j]
+    part3 = tour[j:k]
+    part4 = tour[k:]
+
+    # 3-opt move: Choose one of the possible tours
+    option1 = part1 + part2 + part3 + part4
+    option2 = part1 + part3 + part2 + part4
+    option3 = part1 + part2[::-1] + part3 + part4
+    option4 = part1 + part3[::-1] + part2 + part4
+    option5 = part1 + part2 + part4[::-1] + part3
+    option6 = part1 + part3 + part4[::-1] + part2
+    option7 = part1 + part4[::-1] + part2[::-1] + part3
+    option8 = part1 + part3[::-1] + part2[::-1] + part4
+
+    options = [option1, option2, option3, option4, option5, option6, option7, option8]
+
+    # Choose the best option based on total distance
+    best_option = min(options, key=lambda x: total_distance(x, cities))
+
+    return best_option
+
+
+
 
 def read_input(filename):
     """
@@ -99,15 +130,16 @@ def write_output(filename, tour):
             writer.writerow([city])
 
 def main():
-    #for i in range(7):
-    input_file = f'input_5.csv'
-    output_file = f'output_5.csv'
+    for i in range(7):
+        input_file = f'input_3.csv'
+        output_file = f'output_3opt_3.csv'
 
-    cities = read_input(input_file)
-    initial_tour = simulated_annealing(cities)
-    best_tour = apply_two_opt(initial_tour, cities)
+        cities = read_input(input_file)
+        initial_tour = simulated_annealing(cities)
+        best_tour = apply_3_opt(initial_tour, cities)
 
-    write_output(output_file, best_tour)
+        write_output(output_file, best_tour)
+
 
 if __name__ == "__main__":
     main()

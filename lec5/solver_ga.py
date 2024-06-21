@@ -217,7 +217,7 @@ def main():
     """
     for i in range(7):
         input_file = f'input_{i}.csv'
-        output_file = f'output_{i}.csv'
+        output_file = f'output_ga_{i}.csv'
 
         cities = read_input(input_file)
         best_tour = genetic_algorithm(cities)
