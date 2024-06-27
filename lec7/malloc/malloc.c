@@ -152,6 +152,7 @@ void *my_malloc(size_t size) {
   //フリーブロックを分割して余った部分を新たなフリーブロックとして追加する
   if (remaining_size > sizeof(my_metadata_t)) {
     metadata->size = size;
+    
     // Create a new metadata for the remaining free slot.
     //
     // ... | metadata | object | metadata | free slot | ...
