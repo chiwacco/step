@@ -11,7 +11,7 @@
 //
 
 #define NUM_BINS 10
-#define BIN_SIZE_MULTIPLIER 1.5
+#define BIN_SIZE_MULTIPLIER 2
 
 void *mmap_from_system(size_t size);
 void munmap_to_system(void *ptr, size_t size);
@@ -87,6 +87,7 @@ void *my_malloc(size_t size) {
     bin_size = (size_t)(bin_size * BIN_SIZE_MULTIPLIER);
     bin_index++;
   }
+
 
   my_metadata_t *metadata = NULL;
   my_metadata_t *prev = NULL;
