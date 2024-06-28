@@ -1,9 +1,10 @@
+/*
 
-/*1ベストフィット検索: my_mallocのループを更新し、要求されたサイズを収容できる最小のブロックを見つけるようにしました。これにより、断片化を最小限に抑えることができます。
-2割り当てと解放のロジック: 他の部分は変更せずに保持しています。これにより、プログラムがメモリを正しく割り当て、空きリストを管理し続けます。
-3エッジケース: 適切なブロックが見つからない場合、mmap_from_system()を使用して新しいブロックをシステムから要求し、再度割り当てを試みます。これにより、新しい割り当てのためのスペースを常に確保できます。
+  1 ベストフィット検索: my_mallocのループを更新し、要求されたサイズを収容できる最小のブロックを見つける。これにより、断片化を最小限に抑える
+  2 割り当てと解放のロジック: 他の部分は変更せずに保持。これにより、プログラムがメモリを正しく割り当て、空きリストを管理し続ける
+  3 エッジケース: 適切なブロックが見つからない場合、mmap_from_system()を使用して新しいブロックをシステムから要求し、再度割り当て。これにより、新しい割り当てのためのスペースを常に確保。
+
 */
-
 #include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -13,15 +14,12 @@
 #include <string.h>
 
 //
-// OSからメモリページを取得するインターフェース
+// Interfaces to get memory pages from OS
 //
 
 void *mmap_from_system(size_t size);
 void munmap_to_system(void *ptr, size_t size);
 
-//
-// 構造体の定義
-//
 
 typedef struct my_metadata_t {
   size_t size;
@@ -34,13 +32,14 @@ typedef struct my_heap_t {
 } my_heap_t;
 
 //
-// 静的変数 (新しい静的変数は追加しないでください！)
+// Static variables (DO NOT ADD ANOTHER STATIC VARIABLES!)
 //
 my_heap_t my_heap;
 
 //
-// ヘルパー関数（自由に追加/削除/編集してください！）
+// Helper functions (feel free to add/remove/edit!)
 //
+
 
 void my_add_to_free_list(my_metadata_t *metadata) {
   assert(!metadata->next);
@@ -58,26 +57,28 @@ void my_remove_from_free_list(my_metadata_t *metadata, my_metadata_t *prev) {
 }
 
 //
-// mallocのインターフェース（次の関数の名前を変更しないでください！）
+// Interfaces of malloc (DO NOT RENAME FOLLOWING FUNCTIONS!)
 //
 
-// これは各チャレンジの開始時に呼び出されます。
+// This is called at the beginning of each challenge.
 void my_initialize() {
   my_heap.free_head = &my_heap.dummy;
   my_heap.dummy.size = 0;
   my_heap.dummy.next = NULL;
 }
 
-// my_malloc()はオブジェクトが割り当てられるたびに呼び出されます。
-// |size|は8の倍数で、8 <= |size| <= 4000の範囲内であることが保証されています。
-// mmap_from_system() / munmap_to_system()以外のライブラリ関数の使用は許可されていません。
+// my_malloc() is called every time an object is allocated.
+// |size| is guaranteed to be a multiple of 8 bytes and meets 8 <= |size| <=
+// 4000. You are not allowed to use any library functions other than
+// mmap_from_system() / munmap_to_system().
 void *my_malloc(size_t size) {
   my_metadata_t *metadata = my_heap.free_head;
   my_metadata_t *prev = NULL;
   my_metadata_t *best_fit = NULL;
   my_metadata_t *best_fit_prev = NULL;
 
-  // ベストフィット：オブジェクトに適合する最小の空きスロットを見つける。
+  // First-fit: Find the first free slot the object fits.
+  // TODO: Update this logic to Best-fit!
   while (metadata) {
     if (metadata->size >= size) {
       if (!best_fit || metadata->size < best_fit->size) {
@@ -88,56 +89,86 @@ void *my_malloc(size_t size) {
     prev = metadata;
     metadata = metadata->next;
   }
+  // now, metadata points to the first free slot
+  // and prev is the previous entry.
+
 
   metadata = best_fit;
   prev = best_fit_prev;
 
   if (!metadata) {
-    // 利用可能な空きスロットがなかった場合。システムから新しいメモリ領域を要求する必要があります。
+    // There was no free slot available. We need to request a new memory region
+    // from the system by calling mmap_from_system().
+    //
+    //     | metadata | free slot |
+    //     ^
+    //     metadata
+    //     <---------------------->
+    //            buffer_size
     size_t buffer_size = 4096;
     my_metadata_t *metadata = (my_metadata_t *)mmap_from_system(buffer_size);
     metadata->size = buffer_size - sizeof(my_metadata_t);
     metadata->next = NULL;
-    // メモリ領域を空きリストに追加。
+    // Add the memory region to the free list.
     my_add_to_free_list(metadata);
-    // 再度my_malloc()を試みる。これで成功するはず。
+    // Now, try my_malloc() again. This should succeed.
     return my_malloc(size);
   }
 
-  // |ptr|は割り当てられたオブジェクトの開始地点です。
+  // |ptr| is the beginning of the allocated object.
+  //
+  // ... | metadata | object | ...
+  //     ^          ^
+  //     metadata   ptr
   void *ptr = metadata + 1;
   size_t remaining_size = metadata->size - size;
-  // 空きスロットを空きリストから削除。
+  // Remove the free slot from the free list.
   my_remove_from_free_list(metadata, prev);
 
   if (remaining_size > sizeof(my_metadata_t)) {
-    // 割り当てられたオブジェクトのメタデータを縮小して、remaining_sizeに対応する領域を分離。
+    // Shrink the metadata for the allocated object
+    // to separate the rest of the region corresponding to remaining_size.
+    // If the remaining_size is not large enough to make a new metadata,
+    // this code path will not be taken and the region will be managed
+    // as a part of the allocated object.
     metadata->size = size;
-    // 残りの空きスロット用の新しいメタデータを作成。
+    // Create a new metadata for the remaining free slot.
+    //
+    // ... | metadata | object | metadata | free slot | ...
+    //     ^          ^        ^
+    //     metadata   ptr      new_metadata
+    //                 <------><---------------------->
+    //                   size       remaining size
     my_metadata_t *new_metadata = (my_metadata_t *)((char *)ptr + size);
     new_metadata->size = remaining_size - sizeof(my_metadata_t);
     new_metadata->next = NULL;
-    // 残りの空きスロットを空きリストに追加。
+    // Add the remaining free slot to the free list.
     my_add_to_free_list(new_metadata);
   }
   return ptr;
 }
 
-// オブジェクトが解放されるたびに呼び出されます。mmap_from_system / munmap_to_system以外のライブラリ関数の使用は許可されていません。
+// This is called every time an object is freed.  You are not allowed to
+// use any library functions other than mmap_from_system / munmap_to_system.
 void my_free(void *ptr) {
-  // メタデータを参照。メタデータはオブジェクトの直前に配置されている。
+  // Look up the metadata. The metadata is placed just prior to the object.
+  //
+  // ... | metadata | object | ...
+  //     ^          ^
+  //     metadata   ptr
   my_metadata_t *metadata = (my_metadata_t *)ptr - 1;
-  // 空きスロットを空きリストに追加。
+  // Add the free slot to the free list.
   my_add_to_free_list(metadata);
 }
 
-// 各チャレンジの終了時に呼び出されます。
+// This is called at the end of each challenge.
 void my_finalize() {
-  // 現在は何もありません。
-  // 必要に応じて追加してください！
+  // Nothing is here for now.
+  // feel free to add something if you want!
 }
 
 void test() {
-  // ここに実装してください！
-  assert(1 == 1); /* 1は1です。これは常に真です！（削除しても構いません）*/
+  // Implement here!
+  assert(1 == 1); /* 1 is 1. That's always true! (You can remove this.) */
+}
 }
